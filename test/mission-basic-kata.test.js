@@ -2,15 +2,15 @@
 // ✅ Whenever you see this icon, there's a TASK for you
 // ✅🚀 This symbol represents an advanced task
 // 💡 - This is an ADVICE symbol, it will appear nearby most tasks and help you in fulfilling the tasks
-
 const request = require('supertest');
 const nock = require('nock');
 const {
   startWebServer,
   stopWebServer,
 } = require('../src/entry-points/sensors-api');
-const { getShortUnique, getSensorEvent } = require('./test-helper');
 const sinon = require('sinon');
+const SensorsService = require('../src/domain/sensors-service');
+const { getShortUnique, getSensorEvent } = require('./test-helper');
 
 let expressApp;
 
@@ -50,17 +50,17 @@ describe('Sensors test', () => {
       color: 'Green',
       weight: 80,
       status: 'active',
-      category: 'Kids-Room',
+      category: undefined,
       // 💡 TIP: Consider explicitly specify that category is undefined by assigning 'undefined'
     };
 
     // Act
-
+    const { status } = await request(expressApp).post('/sensor-events').send(eventToAdd);
     // 💡 TIP: use any http client lib like Axios OR supertest
     // 💡 TIP: This is how it is done with Supertest -> await request(expressApp).post("/sensor-events").send(eventToAdd);
 
     // Assert
-
+    expect(status).toBe(400);
     // 💡 TIP: Check that the received response is indeed as stated in the test name
     // 💡 TIP: Use this syntax for example: expect(receivedResponse.status).toBe(...);
   });
@@ -69,10 +69,28 @@ describe('Sensors test', () => {
   // 💡 TIP: Consider checking both the HTTP status and the body
   test('When inserting a valid event, should get successful response', async () => {
     // Arrange
+    const eventToAdd = {
+      temperature: 20,
+      color: 'Green',
+      weight: 80,
+      status: 'active',
+      category: 'some-category',
+    };
     // Act
+    const receivedResponse = await request(expressApp).post('/sensor-events').send(eventToAdd);
     // 💡 TIP: use any http client lib like Axios OR supertest
     // 💡 TIP: This is how it is done with Supertest -> await request(expressApp).post("/sensor-events").send(eventToAdd);
     // Assert
+    expect(receivedResponse).toMatchObject({
+      status: 200,
+      body: {
+        temperature: 20,
+        color: 'Green',
+        weight: 80,
+        status: 'active',
+        category: 'some-category',
+      }
+    });
     // 💡 TIP: You may check the body and the status all together with the following syntax:
     // expect(receivedResponse).toMatchObject({status: 200, body: {...}});
   });
@@ -87,18 +105,27 @@ describe('Sensors test', () => {
   // ✅🚀 TASK: Code the following test below
   test('When an internal unknown error occurs during request, Then get back 500 error', async () => {
     // Arrange
+     const eventToAdd = {
+      temperature: 20,
+      color: 'Green',
+      weight: 80,
+      status: 'active',
+      category: 'something',
+    };
+    sinon.stub(SensorsService.prototype, 'addEvent').rejects(new Error("Error explanation"));
     // 💡 TIP: Factor a valid event here, otherwise the request will get rejected on start and the failure won't happen
     // 💡 TIP: Make some internal function fail, choose any class method
     // 💡 TIP: Use the library sinon to alter the behaviour of existing function and make it throw error
     //  https://sinonjs.org/releases/latest/stubs/
     // 💡 TIP: Here is the syntax: sinon.stub(someClass.prototype, 'methodName').rejects(new Error("Error explanation"));
     // Act
+    const { status } = await request(expressApp).post("/sensor-events").send(eventToAdd);
     // Assert
+    expect(status).toBe(500);
   });
 
   // ✅ Ensure that the webserver is closed when all the tests are completed
   // 💡 TIP: Use the right test hook to call the API and instruct it to close
-
   // ✅🚀 Spread your tests across multiple files, let the test runner invoke tests in multiple processes - Ensure all pass
   // 💡 TIP: You might face port collision where two APIs instances try to open the same port
   // 💡 TIP: Use the flag 'jest --maxWorkers=<num>'. Assign zero for max value of some specific number greater than 1
